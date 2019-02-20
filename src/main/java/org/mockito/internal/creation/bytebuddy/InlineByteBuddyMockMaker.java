@@ -8,9 +8,8 @@ import net.bytebuddy.agent.ByteBuddyAgent;
 import org.mockito.Incubating;
 import org.mockito.exceptions.base.MockitoException;
 import org.mockito.exceptions.base.MockitoInitializationException;
-import org.mockito.internal.InternalMockHandler;
 import org.mockito.internal.configuration.plugins.Plugins;
-import org.mockito.internal.creation.instance.Instantiator;
+import org.mockito.creation.instance.Instantiator;
 import org.mockito.internal.util.Platform;
 import org.mockito.internal.util.concurrent.WeakConcurrentMap;
 import org.mockito.invocation.MockHandler;
@@ -25,6 +24,8 @@ import java.lang.reflect.Modifier;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
+
+import javax.tools.ToolProvider;
 
 import static org.mockito.internal.creation.bytebuddy.InlineBytecodeGenerator.EXCLUDES;
 import static org.mockito.internal.util.StringUtil.join;
@@ -110,7 +111,7 @@ public class InlineByteBuddyMockMaker implements ClassCreatingMockMaker {
                 boot.deleteOnExit();
                 JarOutputStream outputStream = new JarOutputStream(new FileOutputStream(boot));
                 try {
-                    String source = "org/mockito/internal/creation/bytebuddy/MockMethodDispatcher";
+                    String source = "org/mockito/internal/creation/bytebuddy/inject/MockMethodDispatcher";
                     InputStream inputStream = InlineByteBuddyMockMaker.class.getClassLoader().getResourceAsStream(source + ".raw");
                     if (inputStream == null) {
                         throw new IllegalStateException(join(
@@ -135,13 +136,7 @@ public class InlineByteBuddyMockMaker implements ClassCreatingMockMaker {
                 }
                 instrumentation.appendToBootstrapClassLoaderSearch(new JarFile(boot));
                 try {
-                    Class<?> dispatcher = Class.forName("org.mockito.internal.creation.bytebuddy.MockMethodDispatcher");
-                    if (dispatcher.getClassLoader() != null) {
-                        throw new IllegalStateException(join(
-                                "The MockMethodDispatcher must not be loaded manually but must be injected into the bootstrap class loader.",
-                                "",
-                                "The dispatcher class was already loaded by: " + dispatcher.getClassLoader()));
-                    }
+                    Class.forName("org.mockito.internal.creation.bytebuddy.inject.MockMethodDispatcher", false, null);
                 } catch (ClassNotFoundException cnfe) {
                     throw new IllegalStateException(join(
                             "Mockito failed to inject the MockMethodDispatcher class into the bootstrap class loader",
@@ -171,7 +166,7 @@ public class InlineByteBuddyMockMaker implements ClassCreatingMockMaker {
         if (INITIALIZATION_ERROR != null) {
             throw new MockitoInitializationException(join(
                     "Could not initialize inline Byte Buddy mock maker. (This mock maker is not supported on Android.)",
-                    "",
+                    ToolProvider.getSystemJavaCompiler() == null ? "Are you running a JRE instead of a JDK? The inline mock maker needs to be run on a JDK.\n" : "",
                     Platform.describe()), INITIALIZATION_ERROR);
         }
         bytecodeGenerator = new TypeCachingBytecodeGenerator(new InlineBytecodeGenerator(INSTRUMENTATION, mocks), true);
@@ -184,13 +179,13 @@ public class InlineByteBuddyMockMaker implements ClassCreatingMockMaker {
         Instantiator instantiator = Plugins.getInstantiatorProvider().getInstantiator(settings);
         try {
             T instance = instantiator.newInstance(type);
-            MockMethodInterceptor mockMethodInterceptor = new MockMethodInterceptor(asInternalMockHandler(handler), settings);
+            MockMethodInterceptor mockMethodInterceptor = new MockMethodInterceptor(handler, settings);
             mocks.put(instance, mockMethodInterceptor);
             if (instance instanceof MockAccess) {
                 ((MockAccess) instance).setMockitoInterceptor(mockMethodInterceptor);
             }
             return instance;
-        } catch (org.mockito.internal.creation.instance.InstantiationException e) {
+        } catch (org.mockito.creation.instance.InstantiationException e) {
             throw new MockitoException("Unable to create mock instance of type '" + type.getSimpleName() + "'", e);
         }
     }
@@ -201,7 +196,8 @@ public class InlineByteBuddyMockMaker implements ClassCreatingMockMaker {
             return bytecodeGenerator.mockClass(MockFeatures.withMockFeatures(
                     settings.getTypeToMock(),
                     settings.getExtraInterfaces(),
-                    settings.getSerializableMode()
+                    settings.getSerializableMode(),
+                    settings.isStripAnnotations()
             ));
         } catch (Exception bytecodeGenerationFailed) {
             throw prettifyFailure(settings, bytecodeGenerationFailed);
@@ -256,18 +252,6 @@ public class InlineByteBuddyMockMaker implements ClassCreatingMockMaker {
         ), generationFailed);
     }
 
-
-    private static InternalMockHandler<?> asInternalMockHandler(MockHandler handler) {
-        if (!(handler instanceof InternalMockHandler)) {
-            throw new MockitoException(join(
-                    "At the moment you cannot provide own implementations of MockHandler.",
-                    "Please refer to the javadocs for the MockMaker interface.",
-                    ""
-            ));
-        }
-        return (InternalMockHandler<?>) handler;
-    }
-
     @Override
     public MockHandler getHandler(Object mock) {
         MockMethodInterceptor interceptor = mocks.get(mock);
@@ -280,7 +264,7 @@ public class InlineByteBuddyMockMaker implements ClassCreatingMockMaker {
 
     @Override
     public void resetMock(Object mock, MockHandler newHandler, MockCreationSettings settings) {
-        MockMethodInterceptor mockMethodInterceptor = new MockMethodInterceptor(asInternalMockHandler(newHandler), settings);
+        MockMethodInterceptor mockMethodInterceptor = new MockMethodInterceptor(newHandler, settings);
         mocks.put(mock, mockMethodInterceptor);
         if (mock instanceof MockAccess) {
             ((MockAccess) mock).setMockitoInterceptor(mockMethodInterceptor);

@@ -24,7 +24,6 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 import static net.bytebuddy.ClassFileVersion.JAVA_V8;
-import static net.bytebuddy.ClassFileVersion.JAVA_V9;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -50,8 +49,6 @@ public class InlineByteBuddyMockMakerTest extends AbstractByteBuddyMockMakerTest
 
     @Test
     public void should_create_mock_from_final_class_in_the_JDK() throws Exception {
-        assumeTrue(ClassFileVersion.ofThisVm().isLessThan(JAVA_V9)); // Change when ByteBuddy has ASM6 - see #788
-
         MockCreationSettings<Pattern> settings = settingsFor(Pattern.class);
         Pattern proxy = mockMaker.createMock(settings, new MockHandlerImpl<Pattern>(settings));
         assertThat(proxy.pattern()).isEqualTo("bar");
@@ -71,6 +68,13 @@ public class InlineByteBuddyMockMakerTest extends AbstractByteBuddyMockMakerTest
         FinalMethod proxy = mockMaker.createMock(settings, new MockHandlerImpl<FinalMethod>(settings));
         assertThat(proxy.foo()).isEqualTo("bar");
         assertThat(((SampleInterface) proxy).bar()).isEqualTo("bar");
+    }
+
+    @Test
+    public void should_detect_non_overridden_generic_method_of_supertype() throws Exception {
+        MockCreationSettings<GenericSubClass> settings = settingsFor(GenericSubClass.class);
+        GenericSubClass proxy = mockMaker.createMock(settings, new MockHandlerImpl<GenericSubClass>(settings));
+        assertThat(proxy.value()).isEqualTo("bar");
     }
 
     @Test
@@ -208,6 +212,13 @@ public class InlineByteBuddyMockMakerTest extends AbstractByteBuddyMockMakerTest
     }
 
     @Test
+    public void should_mock_method_of_package_private_class() throws Exception {
+        MockCreationSettings<NonPackagePrivateSubClass> settings = settingsFor(NonPackagePrivateSubClass.class);
+        NonPackagePrivateSubClass proxy = mockMaker.createMock(settings, new MockHandlerImpl<NonPackagePrivateSubClass>(settings));
+        assertThat(proxy.value()).isEqualTo("bar");
+    }
+
+    @Test
     public void is_type_mockable_excludes_String() {
         MockMaker.TypeMockability mockable = mockMaker.isTypeMockable(String.class);
         assertThat(mockable.mockable()).isFalse();
@@ -257,7 +268,6 @@ public class InlineByteBuddyMockMakerTest extends AbstractByteBuddyMockMakerTest
     @Test
     public void test_parameters_retention() throws Exception {
         assumeTrue(ClassFileVersion.ofThisVm().isAtLeast(JAVA_V8));
-        assumeTrue(ClassFileVersion.ofThisVm().isLessThan(JAVA_V9)); // Change when ByteBuddy has ASM6 - see #788
 
         Class<?> typeWithParameters = new ByteBuddy()
                 .subclass(Object.class)
@@ -287,7 +297,9 @@ public class InlineByteBuddyMockMakerTest extends AbstractByteBuddyMockMakerTest
 
     @Test
     public void testMockDispatcherIsRelocated() throws Exception {
-        assertThat(InlineByteBuddyMockMaker.class.getClassLoader().getResource("org/mockito/internal/creation/bytebuddy/MockMethodDispatcher.raw")).isNotNull();
+        assertThat(InlineByteBuddyMockMaker.class.getClassLoader()
+            .getResource("org/mockito/internal/creation/bytebuddy/inject/MockMethodDispatcher.raw"))
+            .isNotNull();
     }
 
     private static final class FinalClass {
@@ -322,15 +334,35 @@ public class InlineByteBuddyMockMakerTest extends AbstractByteBuddyMockMakerTest
         }
     }
 
-    private static class NonFinalMethod {
+    private interface SampleInterface {
 
-        public String foo() {
+        String bar();
+    }
+
+    /*package-private*/ abstract class PackagePrivateSuperClass {
+
+        public abstract String indirect();
+
+        public String value() {
+            return indirect() + "qux";
+        }
+    }
+
+    public class NonPackagePrivateSubClass extends PackagePrivateSuperClass {
+
+        @Override
+        public String indirect() {
             return "foo";
         }
     }
 
-    private interface SampleInterface {
+    public static class GenericClass<T> {
 
-        String bar();
+        public T value() {
+            return null;
+        }
+    }
+
+    public static class GenericSubClass extends GenericClass<String> {
     }
 }

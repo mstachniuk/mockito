@@ -1,11 +1,12 @@
 /*
- * Copyright (c) 2017 Mockito contributors
+ * Copyright (c) 2018 Mockito contributors
  * This program is made available under the terms of the MIT License.
  */
 package org.mockito.internal.junit;
 
 import org.mockito.internal.creation.settings.CreationSettings;
-import org.mockito.internal.util.MockitoLogger;
+import org.mockito.internal.listeners.AutoCleanableListener;
+import org.mockito.plugins.MockitoLogger;
 import org.mockito.mock.MockCreationSettings;
 import org.mockito.quality.Strictness;
 
@@ -18,13 +19,14 @@ import java.util.Map;
  * Will come handy when we offer tweaking strictness at the method level with annotation.
  * Should be relatively easy to improve and offer tweaking strictness per mock.
  */
-public class UniversalTestListener implements MockitoTestListener {
+public class UniversalTestListener implements MockitoTestListener, AutoCleanableListener {
 
     private Strictness currentStrictness;
     private final MockitoLogger logger;
 
     private Map<Object, MockCreationSettings> mocks = new IdentityHashMap<Object, MockCreationSettings>();
     private DefaultStubbingLookupListener stubbingLookupListener;
+    private boolean listenerDirty;
 
     public UniversalTestListener(Strictness initialStrictness, MockitoLogger logger) {
         this.currentStrictness = initialStrictness;
@@ -60,14 +62,13 @@ public class UniversalTestListener implements MockitoTestListener {
     }
 
     private static void emitWarnings(MockitoLogger logger, TestFinishedEvent event, Collection<Object> mocks) {
-        String testName = event.getTestClassInstance().getClass().getSimpleName() + "." + event.getTestMethodName();
         if (event.getFailure() != null) {
             //print stubbing mismatches only when there is a test failure
             //to avoid false negatives. Give hint only when test fails.
-            new ArgMismatchFinder().getStubbingArgMismatches(mocks).format(testName, logger);
+            new ArgMismatchFinder().getStubbingArgMismatches(mocks).format(event.getTestName(), logger);
         } else {
             //print unused stubbings only when test succeeds to avoid reporting multiple problems and confusing users
-            new UnusedStubbingsFinder().getUnusedStubbings(mocks).format(testName, logger);
+            new UnusedStubbingsFinder().getUnusedStubbings(mocks).format(event.getTestName(), logger);
         }
     }
 
@@ -85,5 +86,20 @@ public class UniversalTestListener implements MockitoTestListener {
     public void setStrictness(Strictness strictness) {
         this.currentStrictness = strictness;
         this.stubbingLookupListener.setCurrentStrictness(strictness);
+    }
+
+    /**
+     * See {@link AutoCleanableListener#isListenerDirty()}
+     */
+    @Override
+    public boolean isListenerDirty() {
+        return listenerDirty;
+    }
+
+    /**
+     * Marks listener as dirty, scheduled for cleanup when the next session starts
+     */
+    public void setListenerDirty() {
+        this.listenerDirty = true;
     }
 }

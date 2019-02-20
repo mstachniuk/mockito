@@ -5,6 +5,7 @@
 package org.mockitousage.stubbing;
 
 import org.junit.Test;
+import org.mockito.AdditionalAnswers;
 import org.mockito.Mockito;
 import org.mockito.exceptions.base.MockitoException;
 import org.mockitousage.IMethods;
@@ -14,12 +15,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static junit.framework.TestCase.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @SuppressWarnings("unchecked")
 public class StubbingWithDelegateTest {
@@ -111,7 +113,7 @@ public class StubbingWithDelegateTest {
         List<String> mock = mock(List.class, delegatesTo(new FakeList<String>()));
 
         mock.set(1, "1");
-        assertThat(mock.get(1).equals("1"));
+        assertThat(mock.get(1).equals("1")).isTrue();
     }
 
     @Test
@@ -119,7 +121,7 @@ public class StubbingWithDelegateTest {
         List<String> mock = mock(List.class, delegatesTo(new FakeList<String>()));
 
         List<String> subList = mock.subList(0, 0);
-        assertThat(subList.isEmpty());
+        assertThat(subList.isEmpty()).isTrue();
     }
 
     @Test
@@ -174,5 +176,26 @@ public class StubbingWithDelegateTest {
         } catch (RuntimeException e) {
             assertThat(e).isEqualTo(failure);
         }
+    }
+
+    interface Foo {
+        int bar();
+    }
+
+    @Test
+    public void should_call_anonymous_class_method() throws Throwable {
+        Foo foo = new Foo() {
+            public int bar() {
+                return 0;
+            }
+        };
+
+        Foo mock = mock(Foo.class);
+        when(mock.bar()).thenAnswer(AdditionalAnswers.delegatesTo(foo));
+
+        //when
+        mock.bar();
+
+        //then no exception is thrown
     }
 }

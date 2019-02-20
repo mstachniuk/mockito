@@ -12,7 +12,7 @@ import org.mockitoutil.TestBase;
 
 import java.util.*;
 
-import static junit.framework.TestCase.*;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
 
 public class ReturnsEmptyValuesTest extends TestBase {
@@ -74,6 +74,7 @@ public class ReturnsEmptyValuesTest extends TestBase {
         assertTrue(result != (Object) 0);
     }
 
+    @SuppressWarnings("SelfComparison")
     @Test
     public void should_return_zero_if_mock_is_compared_to_itself() {
         //given

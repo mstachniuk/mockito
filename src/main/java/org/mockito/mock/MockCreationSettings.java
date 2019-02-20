@@ -6,7 +6,11 @@
 package org.mockito.mock;
 
 import org.mockito.Incubating;
+import org.mockito.MockSettings;
+import org.mockito.NotExtensible;
 import org.mockito.listeners.InvocationListener;
+import org.mockito.listeners.VerificationStartedListener;
+import org.mockito.quality.Strictness;
 import org.mockito.stubbing.Answer;
 
 import java.util.List;
@@ -15,6 +19,7 @@ import java.util.Set;
 /**
  * Informs about the mock settings. An immutable view of {@link org.mockito.MockSettings}.
  */
+@NotExtensible
 public interface MockCreationSettings<T> {
 
     /**
@@ -60,9 +65,23 @@ public interface MockCreationSettings<T> {
     boolean isStubOnly();
 
     /**
-     * The invocation listeners attached to this mock, see {@link org.mockito.MockSettings#invocationListeners}.
+     * Whether the mock should not make a best effort to preserve annotations.
+     */
+    boolean isStripAnnotations();
+
+    /**
+     * {@link InvocationListener} instances attached to this mock, see {@link org.mockito.MockSettings#invocationListeners}.
      */
     List<InvocationListener> getInvocationListeners();
+
+    /**
+     * {@link VerificationStartedListener} instances attached to this mock,
+     * see {@link org.mockito.MockSettings#verificationStartedListeners(VerificationStartedListener...)}
+     *
+     * @since 2.11.0
+     */
+    @Incubating
+    List<VerificationStartedListener> getVerificationStartedListeners();
 
     /**
      * Informs whether the mock instance should be created via constructor
@@ -82,7 +101,7 @@ public interface MockCreationSettings<T> {
      * @since 2.7.14
      */
     @Incubating
-    public Object[] getConstructorArgs();
+    Object[] getConstructorArgs();
 
     /**
      * Used when mocking non-static inner classes in conjunction with {@link #isUsingConstructor()}
@@ -92,4 +111,13 @@ public interface MockCreationSettings<T> {
      */
     @Incubating
     Object getOuterClassInstance();
+
+    /**
+     * Informs if the mock was created with "lenient" strictness, e.g. having {@link Strictness#LENIENT} characteristic.
+     * For more information about using mocks with lenient strictness, see {@link MockSettings#lenient()}.
+     *
+     * @since 2.20.0
+     */
+    @Incubating
+    boolean isLenient();
 }

@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2017 Mockito contributors
+ * This program is made available under the terms of the MIT License.
+ */
 package org.mockito.kotlin
 
 import kotlinx.coroutines.experimental.runBlocking
@@ -19,6 +23,15 @@ class SuspendTest {
         suspend override fun suspendFunction(x: Int): Int = error("not implemented")
         suspend override fun suspendFunctionWithDefault(x: Int): Int = error("not implemented")
         suspend open fun suspendClassFunctionWithDefault(x: Int = 1): Int = error("not implemented")
+    }
+
+    class FinalSuspendableClass {
+        suspend fun fetch(): Int {
+            fetchConcrete()
+            return 2
+        }
+
+        suspend fun fetchConcrete() = 1
     }
 
     open class CallsSuspendable(private val suspendable: SuspendableInterface) {
@@ -103,5 +116,13 @@ class SuspendTest {
 
         verify(mockSuspendable).suspendClassFunctionWithDefault()
         verify(mockSuspendable).suspendClassFunctionWithDefault(2)
+    }
+
+    @Test
+    fun shouldMockFinalSuspendableClass() = runBlocking<Unit> {
+        val mockClass = mock(FinalSuspendableClass::class.java)
+        `when`(mockClass.fetch()).thenReturn(10)
+        assertThat(mockClass.fetch(), IsEqual(10))
+        verify(mockClass).fetch()
     }
 }

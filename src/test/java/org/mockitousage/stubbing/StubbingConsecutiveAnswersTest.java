@@ -11,7 +11,7 @@ import org.mockito.exceptions.base.MockitoException;
 import org.mockitousage.IMethods;
 import org.mockitoutil.TestBase;
 
-import static junit.framework.TestCase.*;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 public class StubbingConsecutiveAnswersTest extends TestBase {
@@ -37,6 +37,34 @@ public class StubbingConsecutiveAnswersTest extends TestBase {
     public void should_return_consecutive_values_for_two_nulls() throws Exception {
         when(mock.simpleMethod()).thenReturn(null, (String[]) null);
 
+        assertNull(mock.simpleMethod());
+        assertNull(mock.simpleMethod());
+    }
+
+    @Test
+    public void should_return_consecutive_values_first_var_arg_null() throws Exception {
+        when(mock.simpleMethod()).thenReturn("one", (String) null);
+
+        assertEquals("one", mock.simpleMethod());
+        assertNull(mock.simpleMethod());
+        assertNull(mock.simpleMethod());
+    }
+
+    @Test
+    public void should_return_consecutive_values_var_arg_null() throws Exception {
+        when(mock.simpleMethod()).thenReturn("one", (String[]) null);
+
+        assertEquals("one", mock.simpleMethod());
+        assertNull(mock.simpleMethod());
+        assertNull(mock.simpleMethod());
+    }
+
+    @Test
+    public void should_return_consecutive_values_var_args_contain_null() throws Exception {
+        when(mock.simpleMethod()).thenReturn("one", "two", null);
+
+        assertEquals("one", mock.simpleMethod());
+        assertEquals("two", mock.simpleMethod());
         assertNull(mock.simpleMethod());
         assertNull(mock.simpleMethod());
     }

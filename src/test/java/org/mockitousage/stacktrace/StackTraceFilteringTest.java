@@ -18,7 +18,7 @@ import org.mockito.exceptions.verification.WantedButNotInvoked;
 import org.mockitousage.IMethods;
 import org.mockitoutil.TestBase;
 
-import static junit.framework.TestCase.fail;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -72,6 +72,7 @@ public class StackTraceFilteringTest extends TestBase {
         }
     }
 
+    @SuppressWarnings({"MockitoUsage", "CheckReturnValue"})
     @Test
     public void shouldFilterStacktraceOnMockitoException() {
         verify(mock);

@@ -4,16 +4,25 @@
  */
 package org.mockito.stubbing;
 
+import org.mockito.Incubating;
 import org.mockito.MockingDetails;
+import org.mockito.Mockito;
+import org.mockito.NotExtensible;
 import org.mockito.invocation.Invocation;
+import org.mockito.quality.Strictness;
 
 /**
  * Stubbing declared on the mock object.
  * See detailed description including sample code and use cases see javadoc for {@link MockingDetails#getStubbings()}.
+ * <p>
+ * Since 2.10.0 this interface extends {@link Answer}.
+ * Extending Answer is backwards compatible because Stubbing interface is not extensible (see {@link NotExtensible}).
+ * Extending Answer was needed to improve Mockito domain model and simplify the code.
  *
  * @since 2.2.3
  */
-public interface Stubbing {
+@NotExtensible
+public interface Stubbing extends Answer {
 
     /**
      * Returns the method invocation that is stubbed.
@@ -44,4 +53,13 @@ public interface Stubbing {
      * @since 2.2.3
      */
     boolean wasUsed();
+
+    /**
+     * Informs about the {@link Strictness} level of this stubbing.
+     * For more information about setting strictness for stubbings see {@link Mockito#lenient()}.
+     *
+     * @since 2.20.0
+     */
+    @Incubating
+    Strictness getStrictness();
 }

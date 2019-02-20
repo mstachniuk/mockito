@@ -21,9 +21,9 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-import static junit.framework.TestCase.assertNull;
-import static junit.framework.TestCase.assertSame;
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 
 public class InvocationsFinderTest extends TestBase {
@@ -184,5 +184,16 @@ public class InvocationsFinderTest extends TestBase {
 
         previous = InvocationsFinder.findPreviousVerifiedInOrder(invocations, context);
         assertSame(simpleMethodInvocationTwo, previous);
+    }
+
+    @Test
+    public void shouldFindAllStackTraces() {
+        List<Location> all = InvocationsFinder.getAllLocations(invocations);
+        Assertions.assertThat(all).contains(simpleMethodInvocation.getLocation(), simpleMethodInvocationTwo.getLocation(), differentMethodInvocation.getLocation());
+    }
+
+    @Test
+    public void shouldNotFindLocationsForEmptyInvocationsList() {
+        Assertions.assertThat(InvocationsFinder.getAllLocations(Collections.<Invocation>emptyList())).isEmpty();
     }
 }

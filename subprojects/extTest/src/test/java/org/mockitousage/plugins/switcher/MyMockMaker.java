@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2017 Mockito contributors
+ * This program is made available under the terms of the MIT License.
+ */
 package org.mockitousage.plugins.switcher;
 
 import org.mockito.internal.creation.bytebuddy.SubclassByteBuddyMockMaker;
@@ -10,7 +14,7 @@ public class MyMockMaker extends SubclassByteBuddyMockMaker {
 
     public <T> T createMock(MockCreationSettings<T> settings, MockHandler handler) {
         if (explosive.get() != null) {
-            throw new RuntimeException("Ka-boom!");
+            throw new RuntimeException(MyMockMaker.class.getName());
         }
         return super.createMock(settings, handler);
     }

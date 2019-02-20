@@ -9,6 +9,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.stubbing.Answer;
 
 import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.PARAMETER;
@@ -31,11 +32,12 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *       &#064;Mock(name = "database") private ArticleDatabase dbMock;
  *       &#064;Mock(answer = RETURNS_MOCKS) private UserProvider userProvider;
  *       &#064;Mock(extraInterfaces = {Queue.class, Observer.class}) private  articleMonitor;
+ *       &#064;Mock(stubOnly = true) private Logger logger;
  *
  *       private ArticleManager manager;
  *
  *       &#064;Before public void setup() {
- *           manager = new ArticleManager(userProvider, database, calculator, articleMonitor);
+ *           manager = new ArticleManager(userProvider, database, calculator, articleMonitor, logger);
  *       }
  *   }
  *
@@ -66,11 +68,41 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Documented
 public @interface Mock {
 
+    /**
+     * Mock will have custom answer, see {@link MockSettings#defaultAnswer(Answer)}.
+     * For examples how to use 'Mock' annotation and parameters see {@link Mock}.
+     */
     Answers answer() default Answers.RETURNS_DEFAULTS;
 
+    /**
+     * Mock will be 'stubOnly', see {@link MockSettings#stubOnly()}.
+     * For examples how to use 'Mock' annotation and parameters see {@link Mock}.
+     */
+    boolean stubOnly() default false;
+
+    /**
+     * Mock will have custom name (shown in verification errors), see {@link MockSettings#name(String)}.
+     * For examples how to use 'Mock' annotation and parameters see {@link Mock}.
+     */
     String name() default "";
 
+    /**
+     * Mock will have extra interfaces, see {@link MockSettings#extraInterfaces(Class[])}.
+     * For examples how to use 'Mock' annotation and parameters see {@link Mock}.
+     */
     Class<?>[] extraInterfaces() default {};
 
+    /**
+     * Mock will be serializable, see {@link MockSettings#serializable()}.
+     * For examples how to use 'Mock' annotation and parameters see {@link Mock}.
+     */
     boolean serializable() default false;
+
+    /**
+     * Mock will be lenient, see {@link MockSettings#lenient()}.
+     * For examples how to use 'Mock' annotation and parameters see {@link Mock}.
+     *
+     * @since 2.23.3
+     */
+    boolean lenient() default false;
 }

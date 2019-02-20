@@ -11,7 +11,7 @@ import org.mockitoutil.TestBase;
 
 import java.util.List;
 
-import static junit.framework.TestCase.assertNotNull;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.internal.progress.ThreadSafeMockingProgress.mockingProgress;
@@ -34,6 +34,7 @@ public class ThreadSafeMockingProgressTest extends TestBase {
         assertNotNull(p.pullVerificationMode());
     }
 
+    @SuppressWarnings({"CheckReturnValue", "MockitoUsage"})
     @Test
     public void shouldKnowWhenVerificationHasStarted() throws Exception {
         //given

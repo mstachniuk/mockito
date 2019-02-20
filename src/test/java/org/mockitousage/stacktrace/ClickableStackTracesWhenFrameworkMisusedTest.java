@@ -14,7 +14,7 @@ import org.mockito.exceptions.misusing.UnfinishedVerificationException;
 import org.mockitousage.IMethods;
 import org.mockitoutil.TestBase;
 
-import static junit.framework.TestCase.fail;
+import static org.junit.Assert.fail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -44,6 +44,7 @@ public class ClickableStackTracesWhenFrameworkMisusedTest extends TestBase {
         }
     }
 
+    @SuppressWarnings({"MockitoUsage", "CheckReturnValue"})
     private void unfinishedStubbingHere() {
         when(mock.simpleMethod());
     }
@@ -73,6 +74,7 @@ public class ClickableStackTracesWhenFrameworkMisusedTest extends TestBase {
         }
     }
 
+    @SuppressWarnings({"MockitoUsage", "CheckReturnValue"})
     private void unfinishedVerificationHere() {
         verify(mock);
     }

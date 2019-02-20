@@ -1,7 +1,11 @@
+/*
+ * Copyright (c) 2017 Mockito contributors
+ * This program is made available under the terms of the MIT License.
+ */
 package org.mockito.android.internal.creation;
 
+import org.mockito.internal.configuration.plugins.Plugins;
 import org.mockito.internal.creation.bytebuddy.SubclassByteBuddyMockMaker;
-import org.mockito.internal.util.ConsoleMockitoLogger;
 import org.mockito.internal.util.Platform;
 import org.mockito.invocation.MockHandler;
 import org.mockito.mock.MockCreationSettings;
@@ -17,7 +21,7 @@ public class AndroidByteBuddyMockMaker implements MockMaker {
         if (Platform.isAndroid() || Platform.isAndroidMockMakerRequired()) {
             delegate = new SubclassByteBuddyMockMaker(new AndroidLoadingStrategy());
         } else {
-            new ConsoleMockitoLogger().log(join(
+            Plugins.getMockitoLogger().log(join(
                     "IMPORTANT NOTE FROM MOCKITO:",
                     "",
                     "You included the 'mockito-android' dependency in a non-Android environment.",

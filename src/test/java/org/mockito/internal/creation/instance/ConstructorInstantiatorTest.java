@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.Test;
 import org.mockitoutil.TestBase;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.fail;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class ConstructorInstantiatorTest extends TestBase {
 
@@ -65,7 +65,7 @@ public class ConstructorInstantiatorTest extends TestBase {
         assertEquals(new ConstructorInstantiator(false, 123).newInstance(SomeClass3.class).getClass(), SomeClass3.class);
     }
 
-    @Test(expected = InstantiationException.class)
+    @Test(expected = org.mockito.creation.instance.InstantiationException.class)
     public void fails_when_null_is_passed_for_a_primitive() {
         assertEquals(new ConstructorInstantiator(false, new Object[]{null}).newInstance(SomeClass3.class).getClass(), SomeClass3.class);
     }
@@ -75,7 +75,7 @@ public class ConstructorInstantiatorTest extends TestBase {
         try {
             new ConstructorInstantiator(false, new Object[0]).newInstance(SomeClass2.class);
             fail();
-        } catch (InstantiationException e) {
+        } catch (org.mockito.creation.instance.InstantiationException e) {
             assertThat(e).hasMessageContaining("Unable to create instance of 'SomeClass2'.\n" +
                     "Please ensure that the target class has a 0-arg constructor.");
         }

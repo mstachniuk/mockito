@@ -4,23 +4,32 @@
  */
 package org.mockito.internal.stubbing;
 
-import static org.mockito.internal.exceptions.Reporter.notAMockPassedToWhenMethod;
-import static org.mockito.internal.exceptions.Reporter.nullPassedToWhenMethod;
-import static org.mockito.internal.stubbing.answers.DoesNothing.doesNothing;
+import org.mockito.internal.stubbing.answers.CallsRealMethods;
+import org.mockito.internal.stubbing.answers.Returns;
+import org.mockito.internal.stubbing.answers.ThrowsException;
+import org.mockito.internal.util.MockUtil;
+import org.mockito.quality.Strictness;
+import org.mockito.stubbing.Answer;
+import org.mockito.stubbing.Stubber;
 
 import java.util.LinkedList;
 import java.util.List;
 
-import org.mockito.internal.stubbing.answers.CallsRealMethods;
-import org.mockito.internal.stubbing.answers.Returns;
-import org.mockito.internal.stubbing.answers.ThrowsException;
-import org.mockito.internal.stubbing.answers.ThrowsExceptionClass;
-import org.mockito.internal.util.MockUtil;
-import org.mockito.stubbing.Answer;
-import org.mockito.stubbing.Stubber;
+import static org.mockito.internal.exceptions.Reporter.notAMockPassedToWhenMethod;
+import static org.mockito.internal.exceptions.Reporter.notAnException;
+import static org.mockito.internal.exceptions.Reporter.nullPassedToWhenMethod;
+import static org.mockito.internal.progress.ThreadSafeMockingProgress.mockingProgress;
+import static org.mockito.internal.stubbing.answers.DoesNothing.doesNothing;
+import static org.mockito.internal.util.MockUtil.isMock;
+import static org.objenesis.ObjenesisHelper.newInstance;
 
-@SuppressWarnings("unchecked")
 public class StubberImpl implements Stubber {
+
+    private final Strictness strictness;
+
+    public StubberImpl(Strictness strictness) {
+        this.strictness = strictness;
+    }
 
     private final List<Answer<?>> answers = new LinkedList<Answer<?>>();
 
@@ -30,11 +39,12 @@ public class StubberImpl implements Stubber {
             throw nullPassedToWhenMethod();
         }
 
-		if (!MockUtil.isMock(mock)) {
-			throw notAMockPassedToWhenMethod();
-		}
+        if (!isMock(mock)) {
+            throw notAMockPassedToWhenMethod();
+        }
 
-		MockUtil.getMockHandler(mock).setAnswersForStubbing(answers);
+        MockUtil.getInvocationContainer(mock).setAnswersForStubbing(answers, strictness);
+
         return mock;
     }
 
@@ -49,7 +59,7 @@ public class StubberImpl implements Stubber {
     }
 
     private StubberImpl doReturnValues(Object... toBeReturned) {
-        if(toBeReturned == null) {
+        if (toBeReturned == null) {
             answers.add(new Returns(null));
             return this;
         }
@@ -61,7 +71,7 @@ public class StubberImpl implements Stubber {
 
     @Override
     public Stubber doThrow(Throwable... toBeThrown) {
-        if(toBeThrown == null) {
+        if (toBeThrown == null) {
             answers.add(new ThrowsException(null));
             return this;
         }
@@ -73,19 +83,38 @@ public class StubberImpl implements Stubber {
 
     @Override
     public Stubber doThrow(Class<? extends Throwable> toBeThrown) {
-        return doThrowClasses(toBeThrown);
+        if (toBeThrown == null) {
+            mockingProgress().reset();
+            throw notAnException();
+        }
+        Throwable e = null;
+        try {
+            e = newInstance(toBeThrown);
+        } finally {
+            if (e == null) {
+                //this means that an exception or error was thrown when trying to create new instance
+                //we don't want 'catch' statement here because we want the exception to be thrown to the user
+                //however, we do want to clean up state (e.g. "stubbing started").
+                mockingProgress().reset();
+            }
+        }
+        return doThrow(e);
     }
 
     @Override
     public Stubber doThrow(Class<? extends Throwable> toBeThrown, Class<? extends Throwable>... nextToBeThrown) {
-        return doThrowClasses(toBeThrown).doThrowClasses(nextToBeThrown);
-    }
+        Stubber stubber = doThrow(toBeThrown);
 
-    private StubberImpl doThrowClasses(Class<? extends Throwable>... toBeThrown) {
-        for (Class<? extends Throwable> throwable: toBeThrown) {
-            answers.add(new ThrowsExceptionClass(throwable));
+        if (nextToBeThrown == null) {
+            mockingProgress().reset();
+            throw notAnException();
         }
-        return this;
+
+        for (Class<? extends Throwable> next : nextToBeThrown) {
+            stubber = stubber.doThrow(next);
+        }
+        return stubber;
+
     }
 
     @Override
@@ -106,3 +135,5 @@ public class StubberImpl implements Stubber {
         return this;
     }
 }
+
+

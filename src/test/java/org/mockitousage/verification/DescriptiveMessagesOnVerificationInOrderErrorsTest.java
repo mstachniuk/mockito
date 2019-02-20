@@ -14,7 +14,7 @@ import org.mockito.exceptions.verification.WantedButNotInvoked;
 import org.mockitousage.IMethods;
 import org.mockitoutil.TestBase;
 
-import static junit.framework.TestCase.fail;
+import static org.junit.Assert.fail;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -155,7 +155,7 @@ public class DescriptiveMessagesOnVerificationInOrderErrorsTest extends TestBase
 
             String expectedCause =
                 "\n" +
-                "But was 2 times. Undesired invocation:" +
+                "But was 2 times:" +
                 "\n" +
                 "-> at";
             assertThat(e).hasMessageContaining(expectedCause);

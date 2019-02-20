@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2017 Mockito contributors
+ * This program is made available under the terms of the MIT License.
+ */
 package org.mockito.android.internal.creation;
 
 import java.io.File;
@@ -19,12 +23,10 @@ class AndroidTempFileLocator {
         } catch (Throwable ignored) {
         }
         if (t == null) {
-            try {
-                Class<?> clazz = Class.forName("android.support.test.InstrumentationRegistry");
-                Object context = clazz.getDeclaredMethod("getTargetContext").invoke(clazz);
-                t = (File) context.getClass().getMethod("getCacheDir").invoke(context);
-            } catch (Throwable ignored) {
-            }
+            t = getCacheDirFromInstrumentationRegistry("android.support.test.InstrumentationRegistry");
+        }
+        if (t == null) {
+            t = getCacheDirFromInstrumentationRegistry("androidx.test.InstrumentationRegistry");
         }
         if (t == null) {
             try {
@@ -40,6 +42,16 @@ class AndroidTempFileLocator {
             }
         }
         target = t;
+    }
+
+    private static File getCacheDirFromInstrumentationRegistry(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            Object context = clazz.getDeclaredMethod("getTargetContext").invoke(clazz);
+            return (File) context.getClass().getMethod("getCacheDir").invoke(context);
+        } catch (Throwable ignored) {
+        }
+        return null;
     }
 
     private static File[] guessPath(String input) {

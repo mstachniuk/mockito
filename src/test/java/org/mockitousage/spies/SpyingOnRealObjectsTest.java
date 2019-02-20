@@ -18,7 +18,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import static junit.framework.TestCase.*;
+import static org.junit.Assert.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.Mockito.*;
@@ -40,6 +40,7 @@ public class SpyingOnRealObjectsTest extends TestBase {
         verify(spy).add("two");
     }
 
+    @SuppressWarnings({"CheckReturnValue", "MockitoUsage"})
     @Test
     public void shouldBeAbleToMockObjectBecauseWhyNot() {
         spy(new Object());

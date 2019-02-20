@@ -16,7 +16,7 @@ import org.mockito.exceptions.verification.junit.ArgumentsAreDifferent;
 import org.mockitousage.IMethods;
 import org.mockitoutil.TestBase;
 
-import static junit.framework.TestCase.fail;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.*;
 
 public class BasicVerificationInOrderTest extends TestBase {
@@ -264,7 +264,7 @@ public class BasicVerificationInOrderTest extends TestBase {
         verifyZeroInteractions(mockOne);
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings({"all", "CheckReturnValue", "MockitoUsage"})
     @Test(expected = MockitoException.class)
     public void shouldScreamWhenNullPassed() {
         inOrder((Object[])null);

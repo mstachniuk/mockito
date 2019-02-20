@@ -8,7 +8,14 @@ package org.mockito.internal.exceptions;
 import org.mockito.exceptions.base.MockitoAssertionError;
 import org.mockito.exceptions.base.MockitoException;
 import org.mockito.exceptions.misusing.*;
-import org.mockito.exceptions.verification.*;
+import org.mockito.exceptions.verification.MoreThanAllowedActualInvocations;
+import org.mockito.exceptions.verification.NeverWantedButInvoked;
+import org.mockito.exceptions.verification.NoInteractionsWanted;
+import org.mockito.exceptions.verification.SmartNullPointerException;
+import org.mockito.exceptions.verification.TooLittleActualInvocations;
+import org.mockito.exceptions.verification.TooManyActualInvocations;
+import org.mockito.exceptions.verification.VerificationInOrderFailure;
+import org.mockito.exceptions.verification.WantedButNotInvoked;
 import org.mockito.internal.debugging.LocationImpl;
 import org.mockito.internal.exceptions.util.ScenarioPrinter;
 import org.mockito.internal.junit.ExceptionFactory;
@@ -19,7 +26,6 @@ import org.mockito.invocation.Invocation;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.invocation.Location;
 import org.mockito.listeners.InvocationListener;
-import org.mockito.mock.MockName;
 import org.mockito.mock.SerializableMode;
 
 import java.lang.reflect.Field;
@@ -44,6 +50,8 @@ import static org.mockito.internal.util.StringUtil.join;
  * read (xunit plugins take only fraction of screen on modern IDEs).
  */
 public class Reporter {
+
+    private final static String NON_PUBLIC_PARENT = "Mocking methods declared on non-public parent classes is not supported.";
 
     private Reporter() {
     }
@@ -75,7 +83,7 @@ public class Reporter {
                 "Hints:",
                 " 1. missing thenReturn()",
                 " 2. you are trying to stub a final method, which is not supported",
-                " 3: you are stubbing the behaviour of another mock inside before 'thenReturn' instruction if completed",
+                " 3: you are stubbing the behaviour of another mock inside before 'thenReturn' instruction is completed",
                 ""
         ));
     }
@@ -102,7 +110,7 @@ public class Reporter {
                 "Also, this error might show up because:",
                 "1. you stub either of: final/private/equals()/hashCode() methods.",
                 "   Those methods *cannot* be stubbed/verified.",
-                "   " + MockitoLimitations.NON_PUBLIC_PARENT,
+                "   " + NON_PUBLIC_PARENT,
                 "2. inside when() you don't call method on mock but on some other object.",
                 ""
         ));
@@ -118,7 +126,7 @@ public class Reporter {
                 "",
                 "Also, this error might show up because you verify either of: final/private/equals()/hashCode() methods.",
                 "Those methods *cannot* be stubbed/verified.",
-                MockitoLimitations.NON_PUBLIC_PARENT,
+                NON_PUBLIC_PARENT,
                 ""
         ));
     }
@@ -268,10 +276,10 @@ public class Reporter {
         ));
     }
 
-    public static MockitoException stubPassedToVerify() {
+    public static MockitoException stubPassedToVerify(Object mock) {
         return new CannotVerifyStubOnlyMock(join(
-                "Argument passed to verify() is a stubOnly() mock, not a full blown mock!",
-                "If you intend to verify invocations on a mock, don't use stubOnly() in its MockSettings."
+                "Argument \"" + MockUtil.getMockName(mock) + "\" passed to verify is a stubOnly() mock which cannot be verified.",
+                "If you intend to verify invocations on this mock, don't use stubOnly() in its MockSettings."
         ));
     }
 
@@ -350,63 +358,71 @@ public class Reporter {
         ));
     }
 
-    public static MockitoAssertionError tooManyActualInvocations(int wantedCount, int actualCount, DescribedInvocation wanted, Location firstUndesired) {
-        String message = createTooManyInvocationsMessage(wantedCount, actualCount, wanted, firstUndesired);
+    public static MockitoAssertionError tooManyActualInvocations(int wantedCount, int actualCount, DescribedInvocation wanted, List<Location> locations) {
+        String message = createTooManyInvocationsMessage(wantedCount, actualCount, wanted, locations);
         return new TooManyActualInvocations(message);
     }
 
     private static String createTooManyInvocationsMessage(int wantedCount, int actualCount, DescribedInvocation wanted,
-                                                          Location firstUndesired) {
+                                                          List<Location> invocations) {
         return join(
                 wanted.toString(),
                 "Wanted " + pluralize(wantedCount) + ":",
                 new LocationImpl(),
-                "But was " + pluralize(actualCount) + ". Undesired invocation:",
-                firstUndesired,
+                "But was " + pluralize(actualCount) + ":",
+                createAllLocationsMessage(invocations),
                 ""
         );
     }
 
-    public static MockitoAssertionError neverWantedButInvoked(DescribedInvocation wanted, Location firstUndesired) {
+    public static MockitoAssertionError neverWantedButInvoked(DescribedInvocation wanted, List<Location> invocations) {
         return new NeverWantedButInvoked(join(
                 wanted.toString(),
                 "Never wanted here:",
                 new LocationImpl(),
                 "But invoked here:",
-                firstUndesired,
-                ""
+                createAllLocationsMessage(invocations)
         ));
     }
 
-    public static MockitoAssertionError tooManyActualInvocationsInOrder(int wantedCount, int actualCount, DescribedInvocation wanted, Location firstUndesired) {
-        String message = createTooManyInvocationsMessage(wantedCount, actualCount, wanted, firstUndesired);
+    public static MockitoAssertionError tooManyActualInvocationsInOrder(int wantedCount, int actualCount, DescribedInvocation wanted, List<Location> invocations) {
+        String message = createTooManyInvocationsMessage(wantedCount, actualCount, wanted, invocations);
         return new VerificationInOrderFailure(join(
                 "Verification in order failure:" + message
         ));
     }
 
-    private static String createTooLittleInvocationsMessage(org.mockito.internal.reporting.Discrepancy discrepancy, DescribedInvocation wanted,
-                                                            Location lastActualInvocation) {
-        String ending =
-                (lastActualInvocation != null) ? lastActualInvocation + "\n" : "\n";
+    private static String createAllLocationsMessage(List<Location> locations) {
+        if (locations == null) {
+            return "\n";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Location location : locations) {
+            sb.append(location).append("\n");
+        }
+        return sb.toString();
+    }
 
+    private static String createTooLittleInvocationsMessage(org.mockito.internal.reporting.Discrepancy discrepancy,
+                                                            DescribedInvocation wanted,
+                                                            List<Location> locations) {
         return join(
                 wanted.toString(),
                 "Wanted " + discrepancy.getPluralizedWantedCount() + (discrepancy.getWantedCount() == 0 ? "." : ":"),
                 new LocationImpl(),
                 "But was " + discrepancy.getPluralizedActualCount() + (discrepancy.getActualCount() == 0 ? "." : ":"),
-                ending
+                createAllLocationsMessage(locations)
         );
     }
 
-    public static MockitoAssertionError tooLittleActualInvocations(org.mockito.internal.reporting.Discrepancy discrepancy, DescribedInvocation wanted, Location lastActualLocation) {
-        String message = createTooLittleInvocationsMessage(discrepancy, wanted, lastActualLocation);
+    public static MockitoAssertionError tooLittleActualInvocations(org.mockito.internal.reporting.Discrepancy discrepancy, DescribedInvocation wanted, List<Location> allLocations) {
+        String message = createTooLittleInvocationsMessage(discrepancy, wanted, allLocations);
 
         return new TooLittleActualInvocations(message);
     }
 
-    public static MockitoAssertionError tooLittleActualInvocationsInOrder(org.mockito.internal.reporting.Discrepancy discrepancy, DescribedInvocation wanted, Location lastActualLocation) {
-        String message = createTooLittleInvocationsMessage(discrepancy, wanted, lastActualLocation);
+    public static MockitoAssertionError tooLittleActualInvocationsInOrder(org.mockito.internal.reporting.Discrepancy discrepancy, DescribedInvocation wanted, List<Location> locations) {
+        String message = createTooLittleInvocationsMessage(discrepancy, wanted, locations);
 
         return new VerificationInOrderFailure(join(
                 "Verification in order failure:" + message
@@ -420,7 +436,7 @@ public class Reporter {
         return new NoInteractionsWanted(join(
                 "No interactions wanted here:",
                 new LocationImpl(),
-                "But found this interaction on mock '" + safelyGetMockName(undesired.getMock()) + "':",
+                "But found this interaction on mock '" + MockUtil.getMockName(undesired.getMock()) + "':",
                 undesired.getLocation(),
                 scenario
         ));
@@ -430,7 +446,7 @@ public class Reporter {
         return new VerificationInOrderFailure(join(
                 "No interactions wanted here:",
                 new LocationImpl(),
-                "But found this interaction on mock '" + safelyGetMockName(undesired.getMock()) + "':",
+                "But found this interaction on mock '" + MockUtil.getMockName(undesired.getMock()) + "':",
                 undesired.getLocation()
         ));
     }
@@ -458,7 +474,7 @@ public class Reporter {
                 "2. Somewhere in your test you are stubbing *final methods*. Sorry, Mockito does not verify/stub final methods.",
                 "3. A spy is stubbed using when(spy.foo()).then() syntax. It is safer to stub spies - ",
                 "   - with doReturn|Throw() family of methods. More in javadocs for Mockito.spy() method.",
-                "4. " + MockitoLimitations.NON_PUBLIC_PARENT,
+                "4. " + NON_PUBLIC_PARENT,
                 ""
         ));
     }
@@ -496,14 +512,13 @@ public class Reporter {
                 actualType + " cannot be returned by " + methodName + "()",
                 methodName + "() should return " + expectedType,
                 "",
-                "The default answer of " + safelyGetMockName(mock) + " that was configured on the mock is probably incorrectly implemented.",
+                "The default answer of " + MockUtil.getMockName(mock) + " that was configured on the mock is probably incorrectly implemented.",
                 ""
         ));
     }
 
-
-    public static MockitoAssertionError wantedAtMostX(int maxNumberOfInvocations, int foundSize) {
-        return new MockitoAssertionError(join("Wanted at most " + pluralize(maxNumberOfInvocations) + " but was " + foundSize));
+    public static MoreThanAllowedActualInvocations wantedAtMostX(int maxNumberOfInvocations, int foundSize) {
+        return new MoreThanAllowedActualInvocations(join("Wanted at most " + pluralize(maxNumberOfInvocations) + " but was " + foundSize));
     }
 
     public static MockitoException misplacedArgumentMatcher(List<LocalizedMatcher> lastMatchers) {
@@ -525,7 +540,7 @@ public class Reporter {
                 "",
                 "Also, this error might show up because you use argument matchers with methods that cannot be mocked.",
                 "Following methods *cannot* be stubbed/verified: final/private/equals()/hashCode().",
-                MockitoLimitations.NON_PUBLIC_PARENT,
+                NON_PUBLIC_PARENT,
                 ""
         ));
     }
@@ -657,7 +672,7 @@ public class Reporter {
     }
 
     public static MockitoException fieldInitialisationThrewException(Field field, Throwable details) {
-        return new MockitoException(join(
+        return new InjectMocksException(join(
                 "Cannot instantiate @InjectMocks field named '" + field.getName() + "' of type '" + field.getType() + "'.",
                 "You haven't provided the instance at field declaration so I tried to construct the instance.",
                 "However the constructor or the initialization block threw an exception : " + details.getMessage(),
@@ -665,8 +680,8 @@ public class Reporter {
 
     }
 
-    public static MockitoException invocationListenerDoesNotAcceptNullParameters() {
-        return new MockitoException("invocationListeners() does not accept null parameters");
+    public static MockitoException methodDoesNotAcceptParameter(String method, String parameter) {
+        return new MockitoException(method + "() does not accept " + parameter + " See the Javadoc.");
     }
 
     public static MockitoException invocationListenersRequiresAtLeastOneListener() {
@@ -681,7 +696,7 @@ public class Reporter {
 
     public static MockitoException cannotInjectDependency(Field field, Object matchingMock, Exception details) {
         return new MockitoException(join(
-                "Mockito couldn't inject mock dependency '" + safelyGetMockName(matchingMock) + "' on field ",
+                "Mockito couldn't inject mock dependency '" + MockUtil.getMockName(matchingMock) + "' on field ",
                 "'" + field + "'",
                 "whose type '" + field.getDeclaringClass().getCanonicalName() + "' was annotated by @InjectMocks in your test.",
                 "Also I failed because: " + exceptionCauseMessageIfAvailable(details),
@@ -724,7 +739,7 @@ public class Reporter {
     public static MockitoException invalidArgumentPositionRangeAtInvocationTime(InvocationOnMock invocation, boolean willReturnLastParameter, int argumentIndex) {
         return new MockitoException(join(
                 "Invalid argument index for the current invocation of method : ",
-                " -> " + safelyGetMockName(invocation.getMock()) + "." + invocation.getMethod().getName() + "()",
+                " -> " + MockUtil.getMockName(invocation.getMock()) + "." + invocation.getMethod().getName() + "()",
                 "",
                 (willReturnLastParameter ?
                         "Last parameter wanted" :
@@ -758,7 +773,7 @@ public class Reporter {
         return new WrongTypeOfReturnValue(join(
                 "The argument of type '" + actualType.getSimpleName() + "' cannot be returned because the following ",
                 "method should return the type '" + expectedType + "'",
-                " -> " + safelyGetMockName(invocation.getMock()) + "." + invocation.getMethod().getName() + "()",
+                " -> " + MockUtil.getMockName(invocation.getMock()) + "." + invocation.getMethod().getName() + "()",
                 "",
                 "The reason for this error can be :",
                 "1. The wanted argument position is incorrect.",
@@ -795,7 +810,7 @@ public class Reporter {
     public static MockitoException delegatedMethodHasWrongReturnType(Method mockMethod, Method delegateMethod, Object mock, Object delegate) {
         return new MockitoException(join(
                 "Methods called on delegated instance must have compatible return types with the mock.",
-                "When calling: " + mockMethod + " on mock: " + safelyGetMockName(mock),
+                "When calling: " + mockMethod + " on mock: " + MockUtil.getMockName(mock),
                 "return type should be: " + mockMethod.getReturnType().getSimpleName() + ", but was: " + delegateMethod.getReturnType().getSimpleName(),
                 "Check that the instance passed to delegatesTo() is of the correct type or contains compatible methods",
                 "(delegate instance had type: " + delegate.getClass().getSimpleName() + ")"
@@ -805,7 +820,7 @@ public class Reporter {
     public static MockitoException delegatedMethodDoesNotExistOnDelegate(Method mockMethod, Object mock, Object delegate) {
         return new MockitoException(join(
                 "Methods called on mock must exist in delegated instance.",
-                "When calling: " + mockMethod + " on mock: " + safelyGetMockName(mock),
+                "When calling: " + mockMethod + " on mock: " + MockUtil.getMockName(mock),
                 "no such method was found.",
                 "Check that the instance passed to delegatesTo() is of the correct type or contains compatible methods",
                 "(delegate instance had type: " + delegate.getClass().getSimpleName() + ")"
@@ -833,10 +848,6 @@ public class Reporter {
                 "This may happen with doThrow(Class)|thenThrow(Class) family of methods if passing null parameter."));
     }
 
-    private static MockName safelyGetMockName(Object mock) {
-        return MockUtil.getMockName(mock);
-    }
-
     public static UnnecessaryStubbingException formatUnncessaryStubbingException(Class<?> testClass, Collection<Invocation> unnecessaryStubbings) {
         StringBuilder stubbings = new StringBuilder();
         int count = 1;
@@ -851,7 +862,7 @@ public class Reporter {
                 heading,
                 "Clean & maintainable test code requires zero unnecessary code.",
                 "Following stubbings are unnecessary (click to navigate to relevant line of code):" + stubbings,
-                "Please remove unnecessary stubbings or use 'silent' option. More info: javadoc for UnnecessaryStubbingException class."
+                "Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class."
         ));
     }
 
@@ -882,7 +893,7 @@ public class Reporter {
                 "  - stubbing the same method multiple times using 'given().will()' or 'when().then()' API",
                 "    Please use 'will().given()' or 'doReturn().when()' API for stubbing.",
                 "  - stubbed method is intentionally invoked with different arguments by code under test",
-                "    Please use 'default' or 'silent' JUnit Rule.",
+                "    Please use default or 'silent' JUnit Rule (equivalent of Strictness.LENIENT).",
                 "For more information see javadoc for PotentialStubbingProblem class."));
     }
 

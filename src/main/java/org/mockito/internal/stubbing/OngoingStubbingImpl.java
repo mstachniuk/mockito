@@ -5,41 +5,42 @@
 package org.mockito.internal.stubbing;
 
 import org.mockito.invocation.Invocation;
+import org.mockito.quality.Strictness;
 import org.mockito.stubbing.Answer;
 import org.mockito.stubbing.OngoingStubbing;
 
-import static org.mockito.internal.exceptions.Reporter.incorrectUseOfApi;
-
 import java.util.List;
+
+import static org.mockito.internal.exceptions.Reporter.incorrectUseOfApi;
 
 public class OngoingStubbingImpl<T> extends BaseStubbing<T> {
 
-    private final InvocationContainerImpl invocationContainerImpl;
+    private final InvocationContainerImpl invocationContainer;
+    private Strictness strictness;
 
-    public OngoingStubbingImpl(InvocationContainerImpl invocationContainerImpl) {
-        this.invocationContainerImpl = invocationContainerImpl;
+    public OngoingStubbingImpl(InvocationContainerImpl invocationContainer) {
+        super(invocationContainer.invokedMock());
+        this.invocationContainer = invocationContainer;
     }
 
+    @Override
     public OngoingStubbing<T> thenAnswer(Answer<?> answer) {
-        if(!invocationContainerImpl.hasInvocationForPotentialStubbing()) {
+        if(!invocationContainer.hasInvocationForPotentialStubbing()) {
             throw incorrectUseOfApi();
         }
 
-        invocationContainerImpl.addAnswer(answer);
-        return new ConsecutiveStubbing<T>(invocationContainerImpl);
-    }
-
-    public OngoingStubbing<T> then(Answer<?> answer) {
-        return thenAnswer(answer);
+        invocationContainer.addAnswer(answer, strictness);
+        return new ConsecutiveStubbing<T>(invocationContainer);
     }
 
     public List<Invocation> getRegisteredInvocations() {
         //TODO interface for tests
-        return invocationContainerImpl.getInvocations();
+        return invocationContainer.getInvocations();
     }
 
-    @SuppressWarnings("unchecked")
-    public <M> M getMock() {
-        return (M) invocationContainerImpl.invokedMock();
+    public void setStrictness(Strictness strictness) {
+        this.strictness = strictness;
     }
 }
+
+

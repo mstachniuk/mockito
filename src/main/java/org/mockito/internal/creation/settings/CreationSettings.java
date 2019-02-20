@@ -4,8 +4,9 @@
  */
 package org.mockito.internal.creation.settings;
 
-import org.mockito.listeners.InvocationListener;
 import org.mockito.internal.listeners.StubbingLookupListener;
+import org.mockito.listeners.InvocationListener;
+import org.mockito.listeners.VerificationStartedListener;
 import org.mockito.mock.MockCreationSettings;
 import org.mockito.mock.MockName;
 import org.mockito.mock.SerializableMode;
@@ -14,6 +15,7 @@ import org.mockito.stubbing.Answer;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -29,10 +31,13 @@ public class CreationSettings<T> implements MockCreationSettings<T>, Serializabl
     protected SerializableMode serializableMode = SerializableMode.NONE;
     protected List<InvocationListener> invocationListeners = new ArrayList<InvocationListener>();
     protected final List<StubbingLookupListener> stubbingLookupListeners = new ArrayList<StubbingLookupListener>();
+    protected List<VerificationStartedListener> verificationStartedListeners = new LinkedList<VerificationStartedListener>();
     protected boolean stubOnly;
+    protected boolean stripAnnotations;
     private boolean useConstructor;
     private Object outerClassInstance;
     private Object[] constructorArgs;
+    protected boolean lenient;
 
     public CreationSettings() {}
 
@@ -46,12 +51,16 @@ public class CreationSettings<T> implements MockCreationSettings<T>, Serializabl
         this.mockName = copy.mockName;
         this.serializableMode = copy.serializableMode;
         this.invocationListeners = copy.invocationListeners;
+        this.verificationStartedListeners = copy.verificationStartedListeners;
         this.stubOnly = copy.stubOnly;
         this.useConstructor = copy.isUsingConstructor();
         this.outerClassInstance = copy.getOuterClassInstance();
         this.constructorArgs = copy.getConstructorArgs();
+        this.lenient = copy.lenient;
+        this.stripAnnotations = copy.stripAnnotations;
     }
 
+    @Override
     public Class<T> getTypeToMock() {
         return typeToMock;
     }
@@ -61,6 +70,7 @@ public class CreationSettings<T> implements MockCreationSettings<T>, Serializabl
         return this;
     }
 
+    @Override
     public Set<Class<?>> getExtraInterfaces() {
         return extraInterfaces;
     }
@@ -74,14 +84,17 @@ public class CreationSettings<T> implements MockCreationSettings<T>, Serializabl
         return name;
     }
 
+    @Override
     public Object getSpiedInstance() {
         return spiedInstance;
     }
 
+    @Override
     public Answer<Object> getDefaultAnswer() {
         return defaultAnswer;
     }
 
+    @Override
     public MockName getMockName() {
         return mockName;
     }
@@ -100,20 +113,33 @@ public class CreationSettings<T> implements MockCreationSettings<T>, Serializabl
         return this;
     }
 
+    @Override
     public SerializableMode getSerializableMode() {
         return serializableMode;
     }
 
+    @Override
     public List<InvocationListener> getInvocationListeners() {
         return invocationListeners;
+    }
+
+    @Override
+    public List<VerificationStartedListener> getVerificationStartedListeners() {
+        return verificationStartedListeners;
     }
 
     public List<StubbingLookupListener> getStubbingLookupListeners() {
         return stubbingLookupListeners;
     }
 
+    @Override
     public boolean isUsingConstructor() {
         return useConstructor;
+    }
+
+    @Override
+    public boolean isStripAnnotations() {
+        return stripAnnotations;
     }
 
     @Override
@@ -121,12 +147,18 @@ public class CreationSettings<T> implements MockCreationSettings<T>, Serializabl
         return constructorArgs;
     }
 
+    @Override
     public Object getOuterClassInstance() {
         return outerClassInstance;
     }
 
+    @Override
     public boolean isStubOnly() {
         return stubOnly;
     }
 
+    @Override
+    public boolean isLenient() {
+        return lenient;
+    }
 }

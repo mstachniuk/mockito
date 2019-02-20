@@ -5,15 +5,17 @@
 
 package org.mockitousage.matchers;
 
+import org.assertj.core.api.ThrowableAssert;
 import org.junit.Test;
 import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.exceptions.verification.junit.ArgumentsAreDifferent;
 import org.mockitousage.IMethods;
 import org.mockitoutil.TestBase;
 
 import java.util.*;
-
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.fail;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,8 +35,8 @@ public class MoreMatchersTest extends TestBase {
     public void any_should_be_actual_alias_to_anyObject() {
         mock.simpleMethod((Object) null);
 
-        verify(mock).simpleMethod(any());
-        verify(mock).simpleMethod(anyObject());
+        verify(mock).simpleMethod(Mockito.<Object>any());
+        verify(mock).simpleMethod(Mockito.<Object>anyObject());
     }
 
     @Test
@@ -44,16 +46,21 @@ public class MoreMatchersTest extends TestBase {
         verify(mock).simpleMethod(isA(List.class));
         verify(mock).simpleMethod(any(List.class));
 
-
         mock.simpleMethod((String) null);
-        try {
-            verify(mock).simpleMethod(isA(String.class));
-            fail();
-        } catch (AssertionError ignored) { }
-        try {
-            verify(mock).simpleMethod(any(String.class));
-            fail();
-        } catch (AssertionError ignored) { }
+
+        assertThatThrownBy(new ThrowableAssert.ThrowingCallable() {
+            @Override
+            public void call() {
+                verify(mock).simpleMethod(isA(String.class));
+            }
+        }).isInstanceOf(ArgumentsAreDifferent.class);
+
+        assertThatThrownBy(new ThrowableAssert.ThrowingCallable() {
+            @Override
+            public void call() {
+                verify(mock).simpleMethod(any(String.class));
+            }
+        }).isInstanceOf(ArgumentsAreDifferent.class);
     }
 
     @Test
